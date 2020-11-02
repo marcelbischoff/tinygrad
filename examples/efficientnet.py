@@ -131,14 +131,21 @@ if __name__ == "__main__":
                         str(fetch('http://en.wikipedia.org/wiki/Portal:Dogs/Selected_picture'))):
       urls.append('https://upload.wikimedia.org/'+i)
 
+  aW=224
+  aH=110
   for url in urls:
     img = Image.open(io.BytesIO(fetch(url)))
     aspect_ratio = img.size[0] / img.size[1]
     img = img.resize((int(224*max(aspect_ratio,1.0)), int(224*max(1.0/aspect_ratio,1.0))))
+    aimg = img.resize((int(aW*max(aspect_ratio,1.0)), int(aH*max(1.0/aspect_ratio,1.0))))
 
     img = np.array(img)
+    aimg = np.array(aimg)
     y0,x0=(np.asarray(img.shape)[:2]-224)//2
     img = img[y0:y0+224, x0:x0+224]
+    y1=(aimg.shape[0]-aH)//2
+    x1=(aimg.shape[1]-aW)//2
+    aimg = aimg[y1:y1+aH, x1:x1+aW].reshape(aH,aW,3)
     img = np.moveaxis(img, [2,0,1], [0,1,2])
     img = img.astype(np.float32).reshape(1,3,224,224)
     img /= 255.0
@@ -169,6 +176,16 @@ if __name__ == "__main__":
     plt.show()
     """
 
+    #inspired by https://www.geeksforgeeks.org/converting-image-ascii-image-python/
+    gscale = "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\|()1{}[]?-_+~i!lI;:,\"^`'. "
+    amin=aimg.mean(axis=2).min()
+    aw=aimg.mean(axis=2).max()-amin
+    for y in range(aimg.shape[0]):
+        str = ''
+        for x in range(aimg.shape[1]):
+          str = str + gscale[len(gscale)-1 - int((aimg[y,x].mean()-amin)/aw*(len(gscale)-1))]
+        print(str)
+    print(url)
     print("did inference in %.2f s" % (time.time()-st))
     print(np.argmax(out.data), np.max(out.data), lbls[np.argmax(out.data)])
   #print("NOT", np.argmin(out.data), np.min(out.data), lbls[np.argmin(out.data)])
