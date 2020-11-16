@@ -8,6 +8,7 @@ from tinygrad.utils import fetch
 from PIL import Image
 from tqdm import tqdm, trange
 import tinygrad.optim as optim
+GPU = os.getenv("GPU", None) is not None
 
 #not tested completely, too many bad URLs: will run ages waiting for timeouts
 def fetch_imagenet2():
@@ -123,11 +124,6 @@ def train(model, optim, steps, BS=64, gpu=False):
     et = time.time()
     print("forward %.2f s" % (et-st))
 
-    #Y = [0]*BS
-
-    #y = np.zeros((BS,2), np.float32)
-    #y[range(y.shape[0]),Y] = -2.0
-    #y = Tensor(y)
     loss = out.logsoftmax().mul(y).mean()
 
     st = time.time()
@@ -135,12 +131,10 @@ def train(model, optim, steps, BS=64, gpu=False):
     et = time.time()
     print("backward %.2f s" % (et-st))
    
-    #loss = out.mul(y).mean()
-    #loss.backward()
     optim.step()
-    #loss.zero_grad()
-    
-
+  
+    #DEBUG
+    print('DEBUG',out,out.cpu().data, Y)
     cat = np.argmax(out.cpu().data, axis=1)
     accuracy = (cat == Y).mean()
 
@@ -158,9 +152,10 @@ def evaluate(model, gpu=False):
 
 
 if __name__ == "__main__":
+
   #X_train,Y_train,X_test,Y_test = fetch_imagenet2()
   BS = 16
-  STEPS = 100
+  STEPS = 200
   MAX_NO = STEPS*BS*2
   print('Loading data...')
   X_train,Y_train,X_test,Y_test = fetch_local(MAX_NO)
@@ -170,14 +165,14 @@ if __name__ == "__main__":
   Tensor.default_gpu = os.getenv("GPU") is not None
   model = EfficientNet(categories=2)
   print('Loading weights...')
-  model.load_weights_from_torch()
+  model.load_weights_from_torch(GPU)
 
   optimizer = optim.SGD(model.parameters(), lr=0.001)
   #train(model, optimizer, steps=1000)
   
   #optimizer = optim.Adam(model.parameters(), lr=0.001)
   print('Training model...')
-  train(model, optimizer, steps=STEPS, BS=BS)
+  train(model, optimizer, steps=STEPS, BS=BS, gpu=GPU)
 #  evaluate(model)
 
 

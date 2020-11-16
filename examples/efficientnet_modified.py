@@ -162,9 +162,13 @@ class EfficientNet:
     #x = x.dropout(0.2)
     return x.dot(self._fc).add(self._fc_bias.reshape(shape=[1,-1]))
 
-  def load_weights_from_torch(self):
+  def load_weights_from_torch(self, gpu):
     # load b0
+    import io
     import torch
+    #hack to not break:
+    Tensor.default_gpu = False
+
     # https://github.com/lukemelas/EfficientNet-PyTorch/blob/master/efficientnet_pytorch/utils.py#L551
     if self.number == 0:
       b0 = fetch("https://github.com/lukemelas/EfficientNet-PyTorch/releases/download/1.0/efficientnet-b0-355c32eb.pth")
@@ -191,12 +195,15 @@ class EfficientNet:
         except AttributeError:
           mv = eval(mk.replace(".bias", "_bias"))
       vnp = v.numpy().astype(np.float32)
+      
+      #DEBUGING
       try:
         mv.data[:] = vnp if k != '_fc.weight' else vnp.T
       except:
         print('could not be loaded')
-      if GPU:
+      if gpu:
         mv.cuda_()
+    Tensor.default_gpu = gpu
 
 def infer(model, img):
   # preprocess image
