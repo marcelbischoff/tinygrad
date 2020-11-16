@@ -12,8 +12,10 @@ import numpy as np
 np.set_printoptions(suppress=True)
 
 from tinygrad.tensor import Tensor
-from tinygrad.utils import fetch
+from tinygrad.utils import layer_init_uniform, fetch
 from tinygrad.nn import BatchNorm2D
+
+
 
 class MBConvBlock:
   def __init__(self, kernel_size, strides, expand_ratio, input_filters, output_filters, se_ratio):
@@ -61,8 +63,23 @@ class MBConvBlock:
       x = x.add(inputs)
     return x
 
+  def parameters(self):
+    params = []
+    if self._expand_conv != None:
+      params.append(self._expand_conv)
+    if hasattr(self, '_bn0'):
+      params += [self._bn0.weight, self._bn0.bias]
+      
+    params.append(self._depthwise_conv)
+    params += [self._bn1.weight, self._bn1.bias]
+    params += [self._se_reduce, self._se_reduce_bias, self._se_expand, self._se_expand_bias, self._project_conv]
+    params += [self._bn2.weight, self._bn2.bias]
+    return params
+
+
+
 class EfficientNet:
-  def __init__(self, number=0):
+  def __init__(self, number=0, categories=1000):
     self.number = number
     global_params = [
       # width, depth
@@ -117,8 +134,21 @@ class EfficientNet:
     out_channels = round_filters(1280)
     self._conv_head = Tensor.zeros(out_channels, in_channels, 1, 1)
     self._bn1 = BatchNorm2D(out_channels)
-    self._fc = Tensor.zeros(out_channels, 1000)
-    self._fc_bias = Tensor.zeros(1000)
+    #self._fc = Tensor.zeros(out_channels, categories)
+    #self._fc_bias = Tensor.zeros(categories)
+    self._fc = Tensor(layer_init_uniform(out_channels, categories))
+    self._fc_bias = Tensor(layer_init_uniform(categories))
+    
+    
+
+  def parameters(self):
+    #TODO
+    blocks = []
+    for block in self._blocks:
+      blocks+= block.parameters()
+    return [self._conv_stem, self._bn0.weight, self._bn0.bias]+blocks+ [self._conv_head,self._bn1.weight, self._bn1.bias, self._fc,self._fc_bias]
+
+  
 
   def forward(self, x):
     x = x.pad2d(padding=(0,1,0,1))
@@ -161,7 +191,10 @@ class EfficientNet:
         except AttributeError:
           mv = eval(mk.replace(".bias", "_bias"))
       vnp = v.numpy().astype(np.float32)
-      mv.data[:] = vnp if k != '_fc.weight' else vnp.T
+      try:
+        mv.data[:] = vnp if k != '_fc.weight' else vnp.T
+      except:
+        print('could not be loaded')
       if GPU:
         mv.cuda_()
 

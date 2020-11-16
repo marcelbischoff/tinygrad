@@ -19,3 +19,4 @@ class BatchNorm2D:
     x = x.add(self.bias.reshape(shape=[1, -1, 1, 1]))
     return x
 
+
