@@ -2,7 +2,7 @@ import os
 import time
 import io
 import numpy as np
-from efficientnet import EfficientNet
+from efficientnet_modified import EfficientNet
 from tinygrad.tensor import Tensor
 from tinygrad.utils import fetch
 from PIL import Image
