@@ -197,6 +197,7 @@ class EfficientNet:
       vnp = v.numpy().astype(np.float32)
       
       #DEBUGING
+      mv = mv.cpu() #data[:] = vnp if k != '_fc.weight' else vnp.T
       try:
         mv.data[:] = vnp if k != '_fc.weight' else vnp.T
       except:

@@ -59,7 +59,7 @@ def fetch_imagenet2():
 def fetch_local(max_no = -1):
   from os import listdir
   #TODO: Download Dogs/Cats testset from kaggle
-  folder = '/Users/marcel/Downloads/train/'
+  folder = 'examples/train/' #/Users/marcel/Downloads/train/'
   photos, labels = list(), list()
   # enumerate files in the directory
   X, Y = [], []
@@ -133,16 +133,14 @@ def train(model, optim, steps, BS=64, gpu=False):
    
     optim.step()
   
-    #DEBUG
-    print('DEBUG',out,out.cpu().data, Y)
     cat = np.argmax(out.cpu().data, axis=1)
     accuracy = (cat == Y).mean()
 
     # printing
-    loss = loss.cpu().data
-    losses.append(loss)
+    lost = np.array(loss.cpu().data)
+    losses.append(lost)
     accuracies.append(accuracy)
-    t.set_description("loss %.2f accuracy %.2f" % (loss, accuracy))
+    t.set_description("loss %.2f accuracy %.2f" % (lost, accuracy))
 
 def evaluate(model, gpu=False):
   def numpy_eval():
@@ -154,8 +152,8 @@ def evaluate(model, gpu=False):
 if __name__ == "__main__":
 
   #X_train,Y_train,X_test,Y_test = fetch_imagenet2()
-  BS = 16
-  STEPS = 200
+  BS = 8
+  STEPS = 1000 #200
   MAX_NO = STEPS*BS*2
   print('Loading data...')
   X_train,Y_train,X_test,Y_test = fetch_local(MAX_NO)
@@ -167,10 +165,10 @@ if __name__ == "__main__":
   print('Loading weights...')
   model.load_weights_from_torch(GPU)
 
-  optimizer = optim.SGD(model.parameters(), lr=0.001)
+  optimizer = optim.SGD(model.parameters(), lr=0.0003)
   #train(model, optimizer, steps=1000)
   
-  #optimizer = optim.Adam(model.parameters(), lr=0.001)
+  #optimizer = optim.Adam(model.parameters(), lr=3e-4) #0.001)
   print('Training model...')
   train(model, optimizer, steps=STEPS, BS=BS, gpu=GPU)
 #  evaluate(model)
