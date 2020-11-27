@@ -115,9 +115,6 @@ def train(model, optim, steps, BS=64, gpu=False):
     y[range(y.shape[0]),Y] = -2.0
     y = Tensor(y, gpu=gpu)
 
-    # network
-    out = model.forward(x)
-
     # NLL loss function
     st = time.time()
     out = model.forward(x)
@@ -142,36 +139,122 @@ def train(model, optim, steps, BS=64, gpu=False):
     accuracies.append(accuracy)
     t.set_description("loss %.2f accuracy %.2f" % (lost, accuracy))
 
+
+def trainBL(model, optim, steps, BS=64, gpu=False):
+  global data_train
+  losses, accuracies = [], []
+  t = trange(steps, disable=os.getenv('CI') is not None)
+  for i in t:
+    optim.zero_grad()
+    samp = np.random.randint(0, len(data_train), size=(BS))
+    
+    X, Y = fetch_batch(data_train[samp])
+
+    x = Tensor(X, gpu=gpu)
+    y = np.zeros((len(samp),2), np.float32)
+    # correct loss for NLL, torch NLL loss returns one per row
+    y[range(y.shape[0]),Y] = -2.0
+    y = Tensor(y, gpu=gpu)
+
+    # NLL loss function
+    st = time.time()
+    out = model.forward(x)
+    et = time.time()
+    #print("forward %.2f s" % (et-st))
+
+    loss = out.logsoftmax().mul(y).mean()
+
+    st = time.time()
+    loss.backward()
+    et = time.time()
+    #print("backward %.2f s" % (et-st))
+
+    optim.step()
+  
+    cat = np.argmax(out.cpu().data, axis=1)
+    accuracy = (cat == Y).mean()
+
+    # printing
+    lost = np.array(loss.cpu().data)
+    losses.append(lost)
+    accuracies.append(accuracy)
+    t.set_description("loss %.2f accuracy %.2f" % (lost, accuracy))
+
 def evaluate(model, gpu=False):
   def numpy_eval():
     Y_test_preds_out = model.forward(Tensor(X_test.reshape((-1, 28*28)).astype(np.float32), gpu=gpu)).cpu()
     Y_test_preds = np.argmax(Y_test_preds_out.data, axis=1)
     return (Y_test == Y_test_preds).mean()
 
+def evaluateBL(model, gpu=False):
+  def numpy_eval():
+    acc =[]
+    for i in tqdm(range(len(data_test)//BS+1)):
+        X, Y = fetch_batch(data_test[i:i+BS])
+        x = Tensor(X, gpu=gpu)
+        Y_test_preds_out = model.forward(x).cpu().data
+        Y_test_preds = np.argmax(Y_test_preds_out.data, axis=1)
+        acc.append( (Y == Y_test_preds).mean() )
+    return np.array(acc).mean()
+
+  accuracy = numpy_eval()
+  print("test set accuracy is %f" % accuracy)
+
+def fetch_batch(files):
+  #TODO: Download Dogs/Cats testset from kaggle
+  global folder
+  photos, labels = list(), list()
+  # enumerate files in the directory
+  X, Y = [], []
+  for file in files:
+    Yn = 0
+    if file.startswith('cat'):
+        Yn = 1
+    img = Image.open(folder+file)
+    aspect_ratio = img.size[0] / img.size[1]
+    img = img.resize((int(224*max(aspect_ratio,1.0)), int(224*max(1.0/aspect_ratio,1.0))))
+    img = np.array(img)
+    y0,x0=(np.asarray(img.shape)[:2]-224)//2
+    img = img[y0:y0+224, x0:x0+224]
+
+    # low level preprocess
+    img = np.moveaxis(img, [2,0,1], [0,1,2])
+    img = img.astype(np.float32)[:3].reshape(3,224,224)
+    img /= 255.0
+    img -= np.array([0.485, 0.456, 0.406]).reshape((-1,1,1))
+    img /= np.array([0.229, 0.224, 0.225]).reshape((-1,1,1))
+    assert img.shape == (3,224,224), img.shape
+    X.append(img)
+    Y.append(Yn)
+  X=np.array(X)
+  Y=np.array(Y)
+  return X, Y
+
+
+
+
 
 if __name__ == "__main__":
-
-  #X_train,Y_train,X_test,Y_test = fetch_imagenet2()
-  BS = 8
-  STEPS = 1000 #200
-  MAX_NO = STEPS*BS*2
-  print('Loading data...')
-  X_train,Y_train,X_test,Y_test = fetch_local(MAX_NO)
-
-  print(Y_train.sum(),len(Y_train))
-
   Tensor.default_gpu = os.getenv("GPU") is not None
+  folder = 'examples/train/'
+  datafiles = np.array(os.listdir(folder))
+
+  from sklearn.model_selection import train_test_split
+  data_train, data_test = train_test_split(datafiles, test_size=0.1, random_state=42)
+  BS = 4
+  EPOCHS = 1
+  STEPS = len(data_train)//BS
+    
+
   model = EfficientNet(categories=2)
   print('Loading weights...')
   model.load_weights_from_torch(GPU)
 
   optimizer = optim.SGD(model.parameters(), lr=0.0003)
-  #train(model, optimizer, steps=1000)
   
-  #optimizer = optim.Adam(model.parameters(), lr=3e-4) #0.001)
   print('Training model...')
-  train(model, optimizer, steps=STEPS, BS=BS, gpu=GPU)
-#  evaluate(model)
+  trainBL(model, optimizer, steps=STEPS, BS=BS, gpu=GPU)
+  evaluateBL(model)
 
 
 
