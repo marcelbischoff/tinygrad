@@ -71,9 +71,9 @@ class MBConvBlock:
       params += [self._bn0.weight, self._bn0.bias]
       
     params.append(self._depthwise_conv)
-    params += [self._bn1.weight, self._bn1.bias]
+    #params += [self._bn1.weight, self._bn1.bias]
     params += [self._se_reduce, self._se_reduce_bias, self._se_expand, self._se_expand_bias, self._project_conv]
-    params += [self._bn2.weight, self._bn2.bias]
+    #params += [self._bn2.weight, self._bn2.bias]
     return params
 
 
@@ -146,7 +146,9 @@ class EfficientNet:
     blocks = []
     for block in self._blocks:
       blocks+= block.parameters()
-    return [self._conv_stem, self._bn0.weight, self._bn0.bias]+blocks+ [self._conv_head,self._bn1.weight, self._bn1.bias, self._fc,self._fc_bias]
+    return [self._conv_stem]+blocks+ [self._conv_head, self._fc,self._fc_bias]
+    #leave out batchnorm
+    #return [self._conv_stem, self._bn0.weight, self._bn0.bias]+blocks+ [self._conv_head,self._bn1.weight, self._bn1.bias, self._fc,self._fc_bias]
 
   
 
