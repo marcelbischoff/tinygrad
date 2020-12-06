@@ -4,7 +4,7 @@ from tinygrad.tensor import Tensor
 from tinygrad.utils import layer_init_uniform, fetch
 from tinygrad.nn import BatchNorm2D
 
-USE_TORCH = False
+USE_TORCH = True
 
 def fake_torch_load(b0):
   import io
