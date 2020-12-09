@@ -167,7 +167,9 @@ def train(model, optim, steps, BS=128, gpu=False):
 
 def evaluate(model, gpu=False):
   def numpy_eval():
-    Y_test_preds_out = model.forward(Tensor(X_test.reshape((-1, 28*28)).astype(np.float32), gpu=gpu)).cpu()
+    Y_test_preds_out = np.zeros_like(Y_test)
+    for in (t := trange(len(Y_test)//BS, disable=os.getenv('CI') is not None))
+        Y_test_preds_out[t*BS:(t+1)*BS] = model.forward(Tensor(X_test[t*BS:(t+1)*BS].reshape((-1, 28*28)).astype(np.float32), gpu=gpu)).cpu()
     Y_test_preds = np.argmax(Y_test_preds_out.data, axis=1)
     return (Y_test == Y_test_preds).mean()
 
@@ -179,5 +181,9 @@ if __name__ == "__main__":
   np.random.seed(1337)
   model = BigConvNet()
   optimizer = optim.Adam(model.parameters(), lr=0.001)
-  train(model, optimizer, steps=200)
+  train(model, optimizer, steps=1)#4000)
+  optimizer = optim.Adam(model.parameters(), lr=0.0001)
+  train(model, optimizer, steps=1)#000)
+  optimizer = optim.Adam(model.parameters(), lr=0.00001)
+  train(model, optimizer, steps=1)#000)
   evaluate(model)
