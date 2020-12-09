@@ -126,13 +126,6 @@ class BigConvNet:
     xo = x1.dot(self.weight1) + x2.dot(self.weight2) + self.bias
     return xo.logsoftmax()
 
-    #TODO L1
-    x = tf.keras.layers.Dense(10,activation='softmax',use_bias=False,
-                              kernel_regularizer=tf.keras.regularizers.l1(0.00025))(x) # this make stacking better
-#
-    #x = x.reshape(shape=[x.shape[0], -1])
-    return x.logsoftmax()
-
 def train(model, optim, steps, BS=128, gpu=False):
   losses, accuracies = [], []
   lmbd = Tensor([0.00025],requires_grad=False)
@@ -165,12 +158,12 @@ def train(model, optim, steps, BS=128, gpu=False):
     accuracies.append(accuracy)
     t.set_description("loss %.2f accuracy %.2f" % (loss, accuracy))
 
-def evaluate(model, gpu=False):
+def evaluate(model, gpu=False, BS=128):
   def numpy_eval():
-    Y_test_preds_out = np.zeros_like(Y_test)
-    for in (t := trange(len(Y_test)//BS, disable=os.getenv('CI') is not None))
-        Y_test_preds_out[t*BS:(t+1)*BS] = model.forward(Tensor(X_test[t*BS:(t+1)*BS].reshape((-1, 28*28)).astype(np.float32), gpu=gpu)).cpu()
-    Y_test_preds = np.argmax(Y_test_preds_out.data, axis=1)
+    Y_test_preds_out = np.zeros((len(Y_test),10))
+    for i in trange(len(Y_test)//BS, disable=os.getenv('CI') is not None):
+      Y_test_preds_out[i*BS:(i+1)*BS] = model.forward(Tensor(X_test[i*BS:(i+1)*BS].reshape((-1, 28*28)).astype(np.float32), gpu=gpu)).cpu().data
+    Y_test_preds = np.argmax(Y_test_preds_out, axis=1)
     return (Y_test == Y_test_preds).mean()
 
   accuracy = numpy_eval()
@@ -181,9 +174,9 @@ if __name__ == "__main__":
   np.random.seed(1337)
   model = BigConvNet()
   optimizer = optim.Adam(model.parameters(), lr=0.001)
-  train(model, optimizer, steps=1)#4000)
+  train(model, optimizer, steps=4000)
   optimizer = optim.Adam(model.parameters(), lr=0.0001)
-  train(model, optimizer, steps=1)#000)
+  train(model, optimizer, steps=1000)
   optimizer = optim.Adam(model.parameters(), lr=0.00001)
-  train(model, optimizer, steps=1)#000)
+  train(model, optimizer, steps=1000)
   evaluate(model)
