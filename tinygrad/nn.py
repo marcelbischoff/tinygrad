@@ -17,7 +17,8 @@ class BatchNorm2D:
     if self.track_running_stats or self.training:
       batch_mean = x.mean(axis=(0,2,3))
       y = (x - batch_mean.reshape(shape=[1, -1, 1, 1])) 
-      batch_var = (y**self.two).mean(axis=(0,2,3)) #**self.two has issues and seems numerical unstable
+      #batch_var = (y**self.two).mean(axis=(0,2,3)) #**self.two has issues and seems numerical unstable
+      batch_var = (y.mul(y)).mean(axis=(0,2,3)) #**self.two has issues and seems numerical unstable
     if self.track_running_stats: #needs momentum
       self.running_mean = self.running_mean.mul(self.num_batches_tracked).add(batch_mean)
       self.running_var = self.running_var.mul(self.num_batches_tracked).add(batch_var)
