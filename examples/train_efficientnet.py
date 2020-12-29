@@ -3,7 +3,7 @@ import time
 import numpy as np
 from extra.efficientnet import EfficientNet
 from tinygrad.tensor import Tensor
-from tinygrad.utils import get_parameters, fetch
+from extra.utils import get_parameters, fetch
 from tqdm import trange
 import tinygrad.optim as optim
 import io
@@ -40,7 +40,7 @@ if __name__ == "__main__":
   TRANSFER = os.getenv("TRANSFER") is not None
   if TINY:
     model = TinyConvNet(classes)
-  elif TRANSFER: 
+  elif TRANSFER:
     model = EfficientNet(int(os.getenv("NUM", "0")), classes, has_se=True)
     model.load_weights_from_torch()
   else:
@@ -87,11 +87,9 @@ if __name__ == "__main__":
     finish_time = (time.time()-st)*1000.0
 
     # printing
-    t.set_description("loss %.2f accuracy %.2f -- %.2f + %.2f + %.2f + %.2f = %.2f -- %d" %
+    t.set_description("loss %.2f accuracy %.2f -- %.2f + %.2f + %.2f + %.2f = %.2f" %
       (loss, accuracy,
       fp_time, bp_time, opt_time, finish_time,
-      fp_time + bp_time + opt_time + finish_time,
-      Tensor.allocated))
+      fp_time + bp_time + opt_time + finish_time))
 
     del out, y, loss
-
